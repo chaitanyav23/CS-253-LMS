@@ -986,21 +986,6 @@ private:
 
         books.insert(books.end(), defaultBooks.begin(), defaultBooks.end());
     }
-
-    // void initializeDefaultUsers()
-    // {
-    //     users.push_back(new Student("S001", "Alice", 1));
-    //     users.push_back(new Student("S002", "Bob", 1));
-    //     users.push_back(new Student("S003", "Charlie", 1));
-    //     users.push_back(new Student("S004", "David", 1));
-    //     users.push_back(new Student("S005", "Eve", 1));
-    
-    //     users.push_back(new Faculty("F001", "Prof. Xavier", 2));
-    //     users.push_back(new Faculty("F002", "Dr. Strange", 2));
-    //     users.push_back(new Faculty("F003", "Prof. McGonagall", 2));
-    
-    //     users.push_back(new Librarian("L001", "Admin", 3));
-    // }
     
 
 public:
@@ -1126,57 +1111,7 @@ public:
     }
     
 
-    // void Library::returnBook(const string &userId, const string &isbn) {
-    //     auto userIt = find_if(users.begin(), users.end(), [&](const Account &acc) {
-    //         return acc.getUserId() == userId;
-    //     });
-    
-    //     if (userIt == users.end()) {
-    //         cout << "Error: User not found!" << endl;
-    //         return;
-    //     }
-    
-    //     Account &user = *userIt;
-    
-    //     if (!user.hasBorrowed(isbn)) {
-    //         cout << "Error: This book is not borrowed by the user!" << endl;
-    //         return;
-    //     }
-    
-    //     // Find the book and mark as not issued
-    //     auto bookIt = find_if(books.begin(), books.end(), [&](const Book &book) {
-    //         return book.getISBN() == isbn;
-    //     });
-    
-    //     if (bookIt == books.end()) {
-    //         cout << "Error: Book not found!" << endl;
-    //         return;
-    //     }
-    
-    //     bookIt->setIsIssued(false); // Mark the book as available
-    
-    //     // Retrieve borrow date and current date
-    //     time_t borrowDate = user.getBorrowDate(isbn);
-    //     time_t returnDate = time(0);
-    
-    //     // Remove book from user's borrowed list
-    //     user.returnBook(isbn);
-    
-    //     // Log the return to borrow_history.csv
-    //     ofstream historyFile("borrow_history.csv", ios::app);
-    //     if (historyFile.is_open()) {
-    //         historyFile << isbn << "," << userId << ","
-    //                     << to_string(borrowDate) << "," << to_string(returnDate) << "\n";
-    //         historyFile.close();
-    //     } else {
-    //         cout << "Error: Unable to open borrow_history.csv for logging!" << endl;
-    //     }
-    
-    //     saveBooksToCSV();
-    //     saveUsersToCSV();
-    
-    //     cout << "Book returned successfully and logged!" << endl;
-    // }    
+ 
 };
 
 void readfile(const string &fname)
@@ -1280,3 +1215,83 @@ int main()
     delete user;
     return 0;
 }
+
+
+
+
+
+
+
+
+
+
+
+    // void Library::returnBook(const string &userId, const string &isbn) {
+    //     auto userIt = find_if(users.begin(), users.end(), [&](const Account &acc) {
+    //         return acc.getUserId() == userId;
+    //     });
+    
+    //     if (userIt == users.end()) {
+    //         cout << "Error: User not found!" << endl;
+    //         return;
+    //     }
+    
+    //     Account &user = *userIt;
+    
+    //     if (!user.hasBorrowed(isbn)) {
+    //         cout << "Error: This book is not borrowed by the user!" << endl;
+    //         return;
+    //     }
+    
+    //     // Find the book and mark as not issued
+    //     auto bookIt = find_if(books.begin(), books.end(), [&](const Book &book) {
+    //         return book.getISBN() == isbn;
+    //     });
+    
+    //     if (bookIt == books.end()) {
+    //         cout << "Error: Book not found!" << endl;
+    //         return;
+    //     }
+    
+    //     bookIt->setIsIssued(false); // Mark the book as available
+    
+    //     // Retrieve borrow date and current date
+    //     time_t borrowDate = user.getBorrowDate(isbn);
+    //     time_t returnDate = time(0);
+    
+    //     // Remove book from user's borrowed list
+    //     user.returnBook(isbn);
+    
+    //     // Log the return to borrow_history.csv
+    //     ofstream historyFile("borrow_history.csv", ios::app);
+    //     if (historyFile.is_open()) {
+    //         historyFile << isbn << "," << userId << ","
+    //                     << to_string(borrowDate) << "," << to_string(returnDate) << "\n";
+    //         historyFile.close();
+    //     } else {
+    //         cout << "Error: Unable to open borrow_history.csv for logging!" << endl;
+    //     }
+    
+    //     saveBooksToCSV();
+    //     saveUsersToCSV();
+    
+    //     cout << "Book returned successfully and logged!" << endl;
+    // }   
+
+
+
+    
+    // void initializeDefaultUsers()
+    // {
+    //     users.push_back(new Student("S001", "Alice", 1));
+    //     users.push_back(new Student("S002", "Bob", 1));
+    //     users.push_back(new Student("S003", "Charlie", 1));
+    //     users.push_back(new Student("S004", "David", 1));
+    //     users.push_back(new Student("S005", "Eve", 1));
+    
+    //     users.push_back(new Faculty("F001", "Prof. Xavier", 2));
+    //     users.push_back(new Faculty("F002", "Dr. Strange", 2));
+    //     users.push_back(new Faculty("F003", "Prof. McGonagall", 2));
+    
+    //     users.push_back(new Librarian("L001", "Admin", 3));
+    // }
