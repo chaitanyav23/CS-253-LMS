@@ -3,12 +3,10 @@ using namespace std;
 
 vector<vector<string>> content;
 
-// File handling functions
 void readfile(const string &fname);
 void writefile(const vector<vector<string>> &par, const string &fname);
 void writefileappend(const vector<string> &par, const string &fname);
 
-// Case-insensitive comparison
 string toLower(string str)
 {
     transform(str.begin(), str.end(), str.begin(), ::tolower);
@@ -20,168 +18,21 @@ bool caseInsensitiveCompare(const string &str1, const string &str2)
     return toLower(str1) == toLower(str2);
 }
 
-// Base class: User
-class User
-{
-protected:
-    string password;
-    Account account; // For fine tracking
-
-public:
-    string name;
-    string id;
-    int role;
-
-    // Constructor
-    User(string id, string name, int role) : id(id), name(name), role(role) {}
-
-    // Getters
-    string getId() const { return id; }
-    string getName() const { return name; }
-    int getRole() const { return role; }
-
-    // CSV Representation
-    string toCSV() const
-    {
-        return id + "," + name + "," + to_string(role);
-    }
-
-    // Factory Method: Return a Derived Class (Student, Faculty, Librarian)
-    static User *fromCSV(const string &line)
-    {
-        stringstream ss(line);
-        string id, name, roleStr;
-        getline(ss, id, ',');
-        getline(ss, name, ',');
-        getline(ss, roleStr, ',');
-
-        int role = stoi(roleStr);
-
-        // Return appropriate object based on role
-        if (role == 1)
-            return new Student(id, name, role);
-        else if (role == 2)
-            return new Faculty(id, name, role);
-        else if (role == 3)
-            return new Librarian(id, name, role);
-        else
-            throw invalid_argument("Invalid user role in CSV.");
-    }
-
-    // Pure virtual functions for polymorphism
-    virtual void login() = 0;
-    virtual void display_menu() = 0;
-    virtual void issue_book(const string &bookname) = 0;
-
-    // Virtual destructor for safe polymorphic deletion
-    virtual ~User() {}
-
-    // void see_borrowing_history();
-
-    virtual void issue_book(const string &bookname) = 0;
-
-    void see_all_books()
-    {
-        readfile("all_books_data.csv");
-        cout << "Title | Author | Publisher | ISBN | Issued\n";
-        for (auto &book : content)
-        {
-            for (auto &field : book)
-                cout << field << " | ";
-            cout << "\n";
-        }
-    }
-    
-    void see_issued_books()
-    {
-        account.showBorrowedBooks();
-    }
-    
-    void return_book(const string &isbncode)
-    {
-        if (account.removeBorrowedBook(isbncode))
-        {
-            saveAccountData();
-            cout << "Book returned successfully.\n";
-        }
-        else
-        {
-            cout << "You have not issued this book.\n";
-        }
-    } 
-    
-    void return_book(const string &isbncode);
-
-    // void pay_fine();
-
-    // void saveAccountData();
-
-    void saveAccountData()
-    {
-        readfile("issued_books_data.csv");
-
-        // Remove existing records for the user
-        content.erase(remove_if(content.begin(), content.end(), [&](const vector<string> &entry)
-                                { return entry[0] == id; }),
-                      content.end());
-
-        // Add updated borrowed books (time_t is already in seconds)
-        for (const auto &book : account.getBorrowedBooks())
-        {
-            content.push_back({id, name, book.first, to_string(book.second)});
-        }
-
-        writefile(content, "issued_books_data.csv");
-    }
-
-
-    void User::pay_fine()
-{
-    if (account.calculateFine() > 0)
-    {
-        cout << "Your total fine is: " << account.getFineAmount() << " rupees.\n";
-        cout << "Simulating payment...\n";
-        account.clearFine();
-        saveAccountData();
-        cout << "Payment successful. Fine cleared.\n";
-    }
-    else
-    {
-        cout << "No fines to pay.\n";
-    }
-}
-
-// Returns User ID (for consistency in Library functions)
-string getUserId() const { return id; }
-
-// Check if user has borrowed a specific book (Delegates to Account)
-bool hasBorrowed(const string &isbn) const {
-    return account.hasBorrowed(isbn);
-}
-
-// Access to Account object (if needed externally)
-Account &getAccount() { return account; }
-const Account &getAccount() const { return account; }
-
-};
-
 class Account
 {
 private:
-    vector<pair<string, time_t>> borrowedBooks; // Stores ISBN and issue date
+    vector<pair<string, time_t>> borrowedBooks; 
     int fineAmount;
     int maxBorrowLimit;
     int borrowPeriod;
     bool isFaculty;
 
-    // Helper function to calculate days between two time_t values
     int calculateDays(time_t now, time_t past) const
     {
-        return (now - past) / 86400; // 86400 seconds = 1 day
+        return (now - past) / 86400; 
     }
 
 public:
-    // Constructor
     Account(bool faculty = false) : fineAmount(0), isFaculty(faculty)
     {
         maxBorrowLimit = faculty ? 5 : 3;
@@ -190,18 +41,23 @@ public:
 
     void pay_fine();
 
-    // Add borrowed book
-    bool addBorrowedBook(const string &isbn)
-    {
+    vector<pair<string, time_t>> getBorrowedBooks() const {
+        return borrowedBooks;
+    }
+
+    void setBorrowedBooks(const vector<pair<string, time_t>>& books) {
+        borrowedBooks = books;
+    }
+    
+
+    bool addBorrowedBook(const string &isbn) {
         if ((int)borrowedBooks.size() >= maxBorrowLimit)
             return false;
-
+        
         borrowedBooks.emplace_back(isbn, time(0));
-        calculateFine(); // Ensure fine is updated immediately
         return true;
     }
 
-    // Remove returned book
     bool removeBorrowedBook(const string &isbn)
     {
         auto it = find_if(borrowedBooks.begin(), borrowedBooks.end(), [&](const pair<string, time_t> &book)
@@ -210,7 +66,7 @@ public:
         if (it != borrowedBooks.end())
         {
             borrowedBooks.erase(it);
-            calculateFine(); // Ensure fine is updated immediately
+            calculateFine(); 
             return true;
         }
         return false;
@@ -218,33 +74,27 @@ public:
 
     int calculateFine() const
     {
-        // No fines for faculty
         if (isFaculty)
             return 0;
     
-        // Use a local variable to store the calculated fine
         int totalFine = 0;
     
-        // Get current time
         time_t currentTime = time(0);
     
-        // Iterate through borrowed books to calculate fines
         for (const auto &book : borrowedBooks)
         {
             int daysBorrowed = calculateDays(currentTime, book.second);
     
-            // If overdue, calculate the fine
             if (daysBorrowed > borrowPeriod)
             {
-                totalFine += (daysBorrowed - borrowPeriod) * 10; // ₹10 per overdue day
+                totalFine += (daysBorrowed - borrowPeriod) * 10; 
             }
         }
     
-        return totalFine; // Return the calculated fine
+        return totalFine;
     }
         
 
-// Clear fine only if there is no outstanding amount
 void clearFine()
 {
     if (calculateFine() == 0)
@@ -261,18 +111,18 @@ void clearFine()
 
 bool canBorrow() const
 {
-    int currentFine = calculateFine(); // Avoid redundant fine calculation
+    int currentFine = calculateFine(); 
 
     return (int)borrowedBooks.size() < maxBorrowLimit &&
-           currentFine == 0 &&                  // Ensure real-time fine is 0
-           (!isFaculty || !hasOverdue60Days()); // Faculty: No 60+ days overdue
+           currentFine == 0 &&                  
+           (!isFaculty || !hasOverdue60Days()); 
 }
 
 
 
 bool hasOverdue60Days() const
 {
-    if (!isFaculty) return false; // Only faculty have this restriction
+    if (!isFaculty) return false; 
 
     time_t currentTime = time(0);
 
@@ -280,7 +130,6 @@ bool hasOverdue60Days() const
     {
         int daysBorrowed = calculateDays(currentTime, book.second);
 
-        // If any book is overdue by more than 60 days, return true immediately
         if (daysBorrowed > 60)
             return true;
     }
@@ -288,19 +137,15 @@ bool hasOverdue60Days() const
     return false;
 }
 
-// Display borrowed books with overdue status
-void showBorrowedBooks() const
-{
-    if (borrowedBooks.empty())
-    {
+void showBorrowedBooks() const {
+    if (borrowedBooks.empty()) {
         cout << "No books currently borrowed.\n";
         return;
     }
 
     cout << "Borrowed Books (ISBN | Days Borrowed | Status):\n";
     time_t now = time(0);
-    for (const auto &book : borrowedBooks)
-    {
+    for (const auto &book : borrowedBooks) {
         int daysBorrowed = calculateDays(now, book.second);
         cout << book.first << " | " << daysBorrowed << " days";
 
@@ -309,7 +154,6 @@ void showBorrowedBooks() const
     }
 }
 
-// Check if a specific book is borrowed
 bool hasBorrowed(const string &isbn) const {
     return any_of(borrowedBooks.begin(), borrowedBooks.end(),
                   [&](const pair<string, time_t> &book) { return book.first == isbn; });
@@ -318,20 +162,185 @@ bool hasBorrowed(const string &isbn) const {
     int getFineAmount() const { return fineAmount; }
     int getBorrowedCount() const { return (int)borrowedBooks.size(); }
     int getMaxBorrowLimit() const { return maxBorrowLimit; }
-    vector<pair<string, time_t>> getBorrowedBooks() const { return borrowedBooks; }
 };
 
-// Derived class: Student
+class User
+{
+protected:
+    string password;
+    Account account; 
+
+public:
+    string name;
+    string id;
+    int role;
+
+    User(string id, string name, string password, int role)
+        : id(id), name(name), password(password), role(role) 
+    {
+        loadIssuedBooks(); 
+    }
+    string getId() const { return id; }
+    string getName() const { return name; }
+    int getRole() const { return role; }
+    string getPassword() const { return password; }    
+
+    string toCSV() const
+    {
+        return id + "," + name + "," + to_string(role);
+    }
+
+    virtual void login() = 0;
+    virtual void display_menu() = 0;
+    virtual void issue_book(const string &bookname) = 0;
+
+    virtual ~User() {}
+
+    void see_all_books()
+    {
+        readfile("all_books_data.csv");
+        cout << "Title | Author | Publisher | ISBN | Issued\n";
+        for (auto &book : content)
+        {
+            for (auto &field : book)
+                cout << field << " | ";
+            cout << "\n";
+        }
+    }
+
+    void loadIssuedBooks() {
+        readfile("issued_books_data.csv"); 
+        vector<pair<string, time_t>> books; 
+
+        for (const auto &entry : content) {
+            for (const auto &field : entry) {
+                cout << field << " | ";
+            }
+            cout << "\n";
+        }
+    
+        for (const auto &entry : content) {
+            if (entry.size() < 4) { 
+                continue;
+            }
+    
+            if (entry[0] == id) { 
+                string isbn = entry[2]; 
+                time_t issue_time;
+    
+                try {
+                    issue_time = stol(entry[3]);
+                } catch (const exception &e) {
+                    continue;
+                }
+    
+                books.emplace_back(isbn, issue_time);
+            }
+        }
+
+        account.setBorrowedBooks(books);
+    }
+        
+    
+    void see_issued_books()
+    {
+        account.showBorrowedBooks();
+    }
+    
+    void return_book(const string &isbn) {
+        if (account.removeBorrowedBook(isbn)) {
+            readfile("issued_books_data.csv");
+    
+            content.erase(remove_if(content.begin(), content.end(), [&](const vector<string> &entry) {
+                return entry[0] == id && entry[2] == isbn; 
+            }), content.end());
+    
+            writefile(content, "issued_books_data.csv");
+            
+            cout << "Book returned successfully.\n";
+        } else {
+            cout << "You have not issued this book.\n";
+        }
+    }
+    
+
+    void saveAccountData()
+    {
+        readfile("issued_books_data.csv");
+
+        content.erase(remove_if(content.begin(), content.end(), [&](const vector<string> &entry)
+                                { return entry[0] == id; }),
+                      content.end());
+
+        for (const auto &book : account.getBorrowedBooks())
+        {
+            content.push_back({id, name, book.first, to_string(book.second)});
+        }
+
+        writefile(content, "issued_books_data.csv");
+    }
+
+
+    void pay_fine() 
+    {
+        if (account.calculateFine() > 0)
+        {
+            cout << "Your total fine is: " << account.getFineAmount() << " rupees.\n";
+            cout << "Simulating payment...\n";
+            account.clearFine();
+            saveAccountData();
+            cout << "Payment successful. Fine cleared.\n";
+        }
+        else
+        {
+            cout << "No fines to pay.\n";
+        }
+    }
+
+    void viewBorrowHistory() {
+        readfile("borrow_history.csv");
+
+        bool found = false;
+        cout << "Borrow History (ISBN | Title | Author | Year | Return Date):\n";
+
+        for (const auto &entry : content) {
+            if (entry[0] == id) {  // Match User ID
+                for (const auto &field : entry) {
+                    cout << field << " | ";
+                }
+                cout << "\n";
+                found = true;
+            }
+        }
+
+        if (!found) {
+            cout << "No borrowing history available for your account.\n";
+        }
+    }
+
+
+    string getUserId() const { return id; }
+
+    bool hasBorrowed(const string &isbn) const {
+        return account.hasBorrowed(isbn);
+    }
+
+    Account &getAccount() { return account; }
+    const Account &getAccount() const { return account; }
+
+    static User *fromCSV(const string &line); 
+
+};
+
+
 class Student : public User
 {
 public:
 
-    // Default constructor (for main())
-    Student() : User("DefaultID", "DefaultName", 1) {}
+    Student() : User("DefaultID", "DefaultName", "defaultPass", 1) {} 
 
-    // Parameterized constructor (for fromCSV())
-    Student(const string &id, const string &name, int role) : User(id, name, role) {}
-
+    Student(const string &id, const string &name, const string &password, int role)
+        : User(id, name, password, role) {}
     void login()
     {
         cout << "Student login\n";
@@ -346,13 +355,14 @@ public:
                  << "3. Issue Book\n"
                  << "4. Return Book\n"
                  << "5. Pay Fine\n"
-                 << "6. Logout\n"
+                 << "6. Borrowed History\n"
+                 << "7. Logout\n"
                  << "Enter choice: ";
             
             int choice;
             cin >> choice;
     
-            if (cin.fail()) // Handle non-integer input
+            if (cin.fail()) 
             {
                 cin.clear();
                 cin.ignore(numeric_limits<streamsize>::max(), '\n');
@@ -372,7 +382,7 @@ public:
             {
                 string bookname;
                 cout << "Enter book name: ";
-                cin >> ws; // Clear whitespace before getline()
+                cin >> ws;
                 getline(cin, bookname);
                 issue_book(bookname);
                 break;
@@ -389,109 +399,217 @@ public:
                 pay_fine();
                 break;
             case 6:
+                viewBorrowHistory();
+                break;
+            case 7:
                 cout << "Logging out...\n";
-                return; // Exit the loop and function
+                return;
             default:
                 cout << "Invalid choice. Please try again.\n";
             }
         }
     }
     
-    void issue_book(const string &bookname)
-    {
-        // Count borrowed books for the current user
+    void issue_book(const string &bookname) {
         readfile("issued_books_data.csv");
         int book_count = 0;
-        for (auto &entry : content)
-        {
-            if (entry[0] == id)
-            {
+    
+        for (auto &entry : content) {
+            if (entry[0] == id) { 
                 book_count++;
-                if (entry[1] == bookname)
-                {
+                if (entry[1] == bookname) { 
                     cout << "You have already borrowed this book.\n";
                     return;
                 }
             }
         }
     
-        if (book_count >= 3)
-        {
+        if (book_count >= 3) {
             cout << "You have already borrowed the maximum allowed books (3). Return a book to borrow another.\n";
             return;
         }
     
-        if (account.calculateFine() > 0)
-        {
+        if (account.calculateFine() > 0) {
             cout << "You have unpaid fines. Please clear them before borrowing.\n";
             return;
         }
     
-        // Check availability in "all_books_data.csv"
         readfile("all_books_data.csv");
         bool book_found = false;
-        for (auto &book : content)
-        {
-            if (book[0] == bookname && book[4] == "0") // Book name + availability check
-            {
-                book[4] = "1"; // Mark as issued
+        string isbn;
+    
+        for (auto &book : content) {
+            if (book[0] == bookname && book[4] == "0") {
+                book[4] = "1"; 
                 book_found = true;
+                isbn = book[3];
                 break;
             }
         }
     
-        if (!book_found)
-        {
+        if (!book_found) {
             cout << "Book not available or does not exist.\n";
             return;
         }
     
-        // Save updated book availability
         writefile(content, "all_books_data.csv");
     
-        // Log issued book for the student
-        writefileappend({id, bookname, to_string(time(0))}, "issued_books_data.csv");
-        cout << "Book issued successfully: " << bookname << "\n";
+        writefileappend({id, bookname, isbn, to_string(time(0))}, "issued_books_data.csv");
+    
+        account.addBorrowedBook(isbn);
+    
+        cout << "Book issued successfully: " << bookname << " (ISBN: " << isbn << ")\n";
     }
-    };
 
-// Derived class: Faculty
+};
+
 class Faculty : public User
 {
 public:
 
-    Faculty() : User("DefaultID", "DefaultName", 2) {}
+    Faculty() : User("DefaultID", "DefaultName", "defaultPass", 2) {} 
 
-    Faculty(const string &id, const string &name, int role) : User(id, name, role) {}
-
+    Faculty(const string &id, const string &name, const string &password, int role)
+        : User(id, name, password, role) {}
     void login() override
     {
         cout << "Faculty login\n";
     }
     void display_menu() override
     {
-        cout << "Faculty Menu\n";
+        while (true)
+        {
+            cout << "\nFaculty Menu:\n1. See All Books\n2. See Issued Books\n3. Issue Book\n4. Return Book\n5. Pay Fine\n6. Logout\nEnter choice: ";
+            int choice;
+            cin >> choice;
+    
+            if (choice == 1)
+                see_all_books();
+            else if (choice == 2)
+                see_issued_books();
+            else if (choice == 3)
+            {
+                string bookname;
+                cout << "Enter book name: ";
+                cin >> ws;
+                getline(cin, bookname);
+                issue_book(bookname);
+            }
+            else if (choice == 4)
+            {
+                string isbn;
+                cout << "Enter ISBN of book to return: ";
+                cin >> isbn;
+                return_book(isbn);
+            }
+            else if (choice == 5)
+            {
+                pay_fine();
+            }
+            else if (choice == 6)
+            {
+                viewBorrowHistory();
+            }
+            else if (choice == 7)
+            {
+                cout << "Logging out...\n";
+                break;
+            }
+            else
+            {
+                cout << "Invalid choice. Please try again.\n";
+            }
+        }
     }
-    void issue_book(const string &bookname) override;
+    void issue_book(const string &bookname) override {
+        readfile("issued_books_data.csv");
+        time_t current_time = time(0);
+        int book_count = 0;
+    
+        for (auto &entry : content) {
+            if (entry[0] == id) { 
+                time_t issue_time = stoi(entry[3]);
+                int days_borrowed = (current_time - issue_time) / 86400;
+                if (days_borrowed > 60) {
+                    cout << "You have a book overdue by more than 60 days. You cannot borrow a new book.\n";
+                    return;
+                }
+                book_count++;
+            }
+        }
+    
+        if (book_count >= 5) {
+            cout << "You have already borrowed the maximum allowed books (5). Return a book to borrow another.\n";
+            return;
+        }
+    
+        readfile("all_books_data.csv");
+        bool book_found = false;
+        string isbn;
+    
+        for (auto &book : content) {
+            if (strcasecmp(book[0].c_str(), bookname.c_str()) == 0 && book[4] == "0") {
+                book_found = true;
+                book[4] = "1"; 
+                isbn = book[3];
+                break;
+            }
+        }
+    
+        if (!book_found) {
+            cout << "Book not available or does not exist.\n";
+            return;
+        }
+    
+        writefile(content, "all_books_data.csv");
+        writefileappend({id, bookname, isbn, to_string(current_time)}, "issued_books_data.csv");
+    
+        account.addBorrowedBook(isbn); 
+    
+        cout << "Book issued successfully: " << bookname << " (ISBN: " << isbn << ")\n";
+    }
+        
 };
 
-// Derived class: Librarian
 class Librarian : public User
 {
 public:
 
-    Librarian() : User("DefaultID", "DefaultName", 3) {}
+    Librarian() : User("DefaultID", "DefaultName", "defaultPass", 3) {} 
     
-    Librarian(const string &id, const string &name, int role) : User(id, name, role) {}
-
+    Librarian(const string &id, const string &name, const string &password, int role)
+        : User(id, name, password, role) {}
 
     void login() override
     {
         cout << "Librarian login\n";
     }
-    void display_menu() override
+    void display_menu()
     {
-        cout << "Librarian Menu\n";
+        while (true)
+        {
+            cout << "\nLibrarian Menu:\n1. Add Book\n2. Remove Book\n3. Add User\n4. Remove User\n5. Logout\nEnter choice: ";
+            int choice;
+            cin >> choice;
+    
+            if (choice == 1)
+                add_book();
+            else if (choice == 2)
+                remove_book();
+            else if (choice == 3)
+                add_user();
+            else if (choice == 4)
+                remove_user();
+            else if (choice == 5)
+            {
+                cout << "Logging out...\n";
+                break;
+            }
+            else
+            {
+                cout << "Invalid choice. Please try again.\n";
+            }
+        }
     }
     void issue_book(const string &bookname) override { cout << "Librarians cannot issue books.\n"; }
     void add_book();
@@ -502,157 +620,6 @@ public:
     void update_user();
 };
 
-
-void Faculty::display_menu()
-{
-    while (true)
-    {
-        cout << "\nFaculty Menu:\n1. See All Books\n2. See Issued Books\n3. Issue Book\n4. Return Book\n5. Pay Fine\n6. Logout\nEnter choice: ";
-        int choice;
-        cin >> choice;
-
-        if (choice == 1)
-            see_all_books();
-        else if (choice == 2)
-            see_issued_books();
-        else if (choice == 3)
-        {
-            string bookname;
-            cout << "Enter book name: ";
-            cin >> ws;
-            getline(cin, bookname);
-            issue_book(bookname);
-        }
-        else if (choice == 4)
-        {
-            string isbn;
-            cout << "Enter ISBN of book to return: ";
-            cin >> isbn;
-            return_book(isbn);
-        }
-        else if (choice == 5)
-        {
-            pay_fine();
-        }
-        else if (choice == 6)
-        {
-            cout << "Logging out...\n";
-            break;
-        }
-        else
-        {
-            cout << "Invalid choice. Please try again.\n";
-        }
-    }
-}
-
-void Faculty::issue_book(const string &bookname)
-{
-    readfile("issued_books_data.csv");
-    time_t current_time = time(0);
-    int book_count = 0;
-
-    for (auto &entry : content)
-    {
-        if (entry[0] == id)
-        {
-            time_t issue_time = stoi(entry[3]);
-            int days_borrowed = (current_time - issue_time) / 86400;
-            if (days_borrowed > 60)
-            {
-                cout << "You have a book overdue by more than 60 days. You cannot borrow a new book.\n";
-                return;
-            }
-            book_count++;
-        }
-    }
-
-    if (book_count >= 5)
-    {
-        cout << "You have already borrowed the maximum allowed books (5). Return a book to borrow another.\n";
-        return;
-    }
-
-    readfile("all_books_data.csv");
-    bool book_found = false;
-
-    for (auto &book : content)
-    {
-        if (strcasecmp(book[0].c_str(), bookname.c_str()) == 0)
-        {
-            book_found = true;
-
-            if (book[4] == "0")
-            {
-                book[4] = "1";
-                writefile(content, "all_books_data.csv");
-                writefileappend({id, book[0], book[3], to_string(current_time)}, "issued_books_data.csv");
-                cout << "Book issued successfully.\n";
-                return;
-            }
-            else
-            {
-                cout << "Book is already issued.\n";
-                return;
-            }
-        }
-    }
-
-    if (!book_found)
-    {
-        cout << "Book not found.\n";
-    }
-}
-
-void Librarian::display_menu()
-{
-    while (true)
-    {
-        cout << "\nLibrarian Menu:\n1. Add Book\n2. Remove Book\n3. Add User\n4. Remove User\n5. Logout\nEnter choice: ";
-        int choice;
-        cin >> choice;
-
-        if (choice == 1)
-            add_book();
-        else if (choice == 2)
-            remove_book();
-        else if (choice == 3)
-            add_user();
-        else if (choice == 4)
-            remove_user();
-        else if (choice == 5)
-        {
-            cout << "Logging out...\n";
-            break;
-        }
-        else
-        {
-            cout << "Invalid choice. Please try again.\n";
-        }
-    }
-}
-
-void Librarian::issue_book(const string &bookname)
-{
-    cout << "Librarians cannot issue books.\n";
-}
-
-void Librarian::add_book()
-{
-    string title, author, publisher, isbn;
-    cout << "Enter book title: ";
-    cin >> ws;
-    getline(cin, title);
-    cout << "Enter book author: ";
-    getline(cin, author);
-    cout << "Enter book publisher: ";
-    getline(cin, publisher);
-    cout << "Enter book ISBN: ";
-    getline(cin, isbn);
-
-    writefileappend({title, author, publisher, isbn, "0"}, "all_books_data.csv");
-    cout << "Book added successfully.\n";
-}
 
 void Librarian::remove_book()
 {
@@ -692,6 +659,15 @@ void Librarian::add_user()
     getline(cin, name);
     cout << "Enter user ID: ";
     getline(cin, id);
+    readfile("all_users_data.csv");
+    for (const auto &user : content)
+    {
+        if (user[1] == id)
+        {
+            cout << "Error: This ID is already registered. Please enter a different ID.\n";
+            return;
+        }
+    }
     cout << "Enter user password: ";
     getline(cin, password);
     cout << "Enter user role (1 for Student, 2 for Faculty, 3 for Librarian): ";
@@ -838,6 +814,39 @@ void Librarian::add_book()
     cout << "Book added successfully.\n";
 }
 
+User *User::fromCSV(const string &line)
+{
+    stringstream ss(line);
+    string name, id, password, roleStr;
+
+    if (!getline(ss, name, ',') || !getline(ss, id, ',') || !getline(ss, password, ',') || !getline(ss, roleStr, ','))
+    {
+        cerr << "Error: Malformed CSV line (missing fields): " << line << endl;
+        return nullptr; 
+    }
+
+    if (roleStr.empty() || !all_of(roleStr.begin(), roleStr.end(), ::isdigit))
+    {
+        cerr << "Error: Invalid role value in CSV: " << roleStr << " in line: " << line << endl;
+        return nullptr;
+    }
+
+    int role = stoi(roleStr); 
+
+    if (role == 1)
+        return new Student(id, name, password, role);  
+    else if (role == 2)
+        return new Faculty(id, name, password, role);
+    else if (role == 3)
+        return new Librarian(id, name, password, role);
+    else
+    {
+        cerr << "Error: Unknown role type in CSV: " << role << endl;
+        return nullptr;
+    }
+}
+
+
 class Book
 {
 private:
@@ -851,18 +860,12 @@ public:
     Book(string isbn, string title, string author, int year, bool isIssued = false)
         : isbn(isbn), title(title), author(author), year(year), isIssued(isIssued) {}
 
-    void setIsbn(const string &newIsbn) {
-        isbn = newIsbn;
-    }
-
-    // Getters
     string getISBN() const { return isbn; }
     string getTitle() const { return title; }
     string getAuthor() const { return author; }
     int getYear() const { return year; }
     bool getIsIssued() const { return isIssued; }
 
-    // Setters
     void setTitle(const string &newTitle) { title = newTitle; }
     void setAuthor(const string &newAuthor) { author = newAuthor; }
     void setIsbn(const string &newIsbn) { isbn = newIsbn; }
@@ -936,16 +939,16 @@ private:
         if (users.empty())
         {
             cerr << "Error: User database is empty. Exiting the system...\n";
-            exit(1); // Terminates the program
+            exit(1);
         }
     }
 
     void saveUsers()
     {
         ofstream file("all_users_data.csv");
-        for (const auto &user : users) // user is a User* (pointer to User)
+        for (const auto &user : users) 
         {
-            file << user->toCSV() << "\n"; // Use '->' to call method on a pointer
+            file << user->toCSV() << "\n"; 
         }
         file.close();
     }
@@ -961,10 +964,10 @@ private:
         historyFile.close();
     }
 
-    bool Library::isIsbnDuplicate(const string &isbn) {
+    bool isIsbnDuplicate(const string &isbn) {
         for (const auto &book : books) {
             if (book.getISBN() == isbn) {
-                return true; // Duplicate found
+                return true; 
             }
         }
         return false;
@@ -1005,7 +1008,7 @@ public:
         }
     }
 
-    void Library::addBook() {
+    void addBook() {
         string title, author, isbn, year;
         cout << "Enter book title: ";
         cin.ignore();
@@ -1017,7 +1020,6 @@ public:
         cout << "Enter publication year: ";
         getline(cin, year);
     
-        // Check if ISBN already exists
         if (isIsbnDuplicate(isbn)) {
             cout << "Error: A book with ISBN " << isbn << " already exists!" << endl;
             return;
@@ -1030,12 +1032,11 @@ public:
         cout << "Book added successfully!" << endl;
     }    
 
-    void Library::updateBook() {
+    void updateBook() {
         string isbn;
         cout << "Enter ISBN of the book to update: ";
         cin >> isbn;
     
-        // Find the book by ISBN
         auto it = find_if(books.begin(), books.end(), [&](const Book &book) {
             return book.getISBN() == isbn;
         });
@@ -1061,7 +1062,6 @@ public:
         cout << "Enter new ISBN: ";
         getline(cin, newIsbn);
     
-        // Check for ISBN duplication (if new ISBN is provided)
         if (!newIsbn.empty() && newIsbn != isbn && isIsbnDuplicate(newIsbn)) {
             cout << "Error: A book with ISBN " << newIsbn << " already exists!" << endl;
             return;
@@ -1084,7 +1084,7 @@ public:
         cout << "Book updated successfully!" << endl;
     }    
 
-    void Library::returnBook(const string &userId, const string &isbn) {
+    void returnBook(const string &userId, const string &isbn) {
         auto userIt = find_if(users.begin(), users.end(),
                               [&](const User *user) { return user->getUserId() == userId; });
     
@@ -1095,22 +1095,36 @@ public:
     
         User *user = *userIt;
     
-        // Check if the book is borrowed
         if (!user->hasBorrowed(isbn)) {
             cout << "Error: This book is not borrowed by the user!" << endl;
             return;
         }
     
-        // Return the book
         if (user->getAccount().removeBorrowedBook(isbn)) {
             cout << "Book returned successfully.\n";
-            user->saveAccountData(); // Persist updated record
+            user->saveAccountData(); 
         } else {
             cout << "Error in returning the book.\n";
         }
     }
     
-
+    void viewBorrowHistory() {
+        readfile("borrow_history.csv");
+    
+        if (content.empty()) {
+            cout << "No borrowing history available.\n";
+            return;
+        }
+    
+        cout << "Borrow History (ISBN | Title | Author | Year | Return Date):\n";
+        for (const auto &entry : content) {
+            for (const auto &field : entry) {
+                cout << field << " | ";
+            }
+            cout << "\n";
+        }
+    }
+    
  
 };
 
@@ -1191,107 +1205,41 @@ int main()
 {
     Library library;
 
-    string userType;
+    string userType, userId, password;
     cout << "Enter user type (Student/Faculty/Librarian): ";
     cin >> userType;
+    
+    cout << "Enter User ID: ";
+    cin >> userId;
 
-    User *user = nullptr;  // Polymorphic base class pointer
+    cout << "Enter Password: ";
+    cin >> password;
 
-    if (userType == "Student")
-        user = new Student();
-    else if (userType == "Faculty")
-        user = new Faculty();
-    else if (userType == "Librarian")
-        user = new Librarian();
-    else
+    ifstream file("all_users_data.csv");
+    string line;
+    User *user = nullptr;
+
+    while (getline(file, line))
     {
-        cout << "Invalid user type. Exiting...\n";
+        User *tempUser = User::fromCSV(line);
+        if (tempUser && tempUser->getId() == userId && tempUser->getPassword() == password)
+        {
+            user = tempUser; 
+            break;
+        }
+        delete tempUser;
+    }
+    file.close();
+
+    if (!user)
+    {
+        cout << "Invalid credentials. Exiting...\n";
         return 1;
     }
-    
-    user->login();
+
+    cout << userType << " login successful!\n";
     user->display_menu();
 
-    delete user;
+    delete user; 
     return 0;
 }
-
-
-
-
-
-
-
-
-
-
-
-    // void Library::returnBook(const string &userId, const string &isbn) {
-    //     auto userIt = find_if(users.begin(), users.end(), [&](const Account &acc) {
-    //         return acc.getUserId() == userId;
-    //     });
-    
-    //     if (userIt == users.end()) {
-    //         cout << "Error: User not found!" << endl;
-    //         return;
-    //     }
-    
-    //     Account &user = *userIt;
-    
-    //     if (!user.hasBorrowed(isbn)) {
-    //         cout << "Error: This book is not borrowed by the user!" << endl;
-    //         return;
-    //     }
-    
-    //     // Find the book and mark as not issued
-    //     auto bookIt = find_if(books.begin(), books.end(), [&](const Book &book) {
-    //         return book.getISBN() == isbn;
-    //     });
-    
-    //     if (bookIt == books.end()) {
-    //         cout << "Error: Book not found!" << endl;
-    //         return;
-    //     }
-    
-    //     bookIt->setIsIssued(false); // Mark the book as available
-    
-    //     // Retrieve borrow date and current date
-    //     time_t borrowDate = user.getBorrowDate(isbn);
-    //     time_t returnDate = time(0);
-    
-    //     // Remove book from user's borrowed list
-    //     user.returnBook(isbn);
-    
-    //     // Log the return to borrow_history.csv
-    //     ofstream historyFile("borrow_history.csv", ios::app);
-    //     if (historyFile.is_open()) {
-    //         historyFile << isbn << "," << userId << ","
-    //                     << to_string(borrowDate) << "," << to_string(returnDate) << "\n";
-    //         historyFile.close();
-    //     } else {
-    //         cout << "Error: Unable to open borrow_history.csv for logging!" << endl;
-    //     }
-    
-    //     saveBooksToCSV();
-    //     saveUsersToCSV();
-    
-    //     cout << "Book returned successfully and logged!" << endl;
-    // }   
-
-
-
-    
-    // void initializeDefaultUsers()
-    // {
-    //     users.push_back(new Student("S001", "Alice", 1));
-    //     users.push_back(new Student("S002", "Bob", 1));
-    //     users.push_back(new Student("S003", "Charlie", 1));
-    //     users.push_back(new Student("S004", "David", 1));
-    //     users.push_back(new Student("S005", "Eve", 1));
-    
-    //     users.push_back(new Faculty("F001", "Prof. Xavier", 2));
-    //     users.push_back(new Faculty("F002", "Dr. Strange", 2));
-    //     users.push_back(new Faculty("F003", "Prof. McGonagall", 2));
-    
-    //     users.push_back(new Librarian("L001", "Admin", 3));
-    // }
