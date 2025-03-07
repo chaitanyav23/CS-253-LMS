@@ -21,12 +21,12 @@ This Library Management System (LMS) is a C++ program that allows students, facu
 ### **1. Compile the Program**
 Use the following command to compile the program:
 ```sh
- g++ lms.cpp -o lms
+ g++ -o b lms.cpp
 ```
 
 ### **2. Run the Program**
 ```sh
- ./lms
+ ./b
 ```
 
 ### **3. Login as a User**
